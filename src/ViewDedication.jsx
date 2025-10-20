@@ -21,9 +21,10 @@ export default function ViewDedication({ id: propId }) {
 
     async function fetchVideo() {
       try {
-        const url = `http://${
-          window.location.hostname
-        }:3000/view/${encodeURIComponent(id)}`;
+        const url = `https://blowithback.onrender.com/view/${encodeURIComponent(
+          id
+        )}`;
+
         console.log("[ViewDedication] fetching", url);
         const res = await fetch(url, { cache: "no-store" });
         if (!res.ok) throw new Error(`status ${res.status}`);
