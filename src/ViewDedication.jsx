@@ -1,24 +1,7 @@
 import { useEffect, useState } from "react";
 
-// 🧩 Example mapping between group keys and actual video URLs
-const videoGroups = {
-  sensi1: [
-    "https://res.cloudinary.com/do6ea0ear/video/upload/v1734723456/sensi1_1.mp4",
-    
-  ],
-
-
-  puff1: [
-    "https://res.cloudinary.com/do6ea0ear/video/upload/v1759161847/puff3_ywhjvy.mp4",
-  ],
-};
-
-
-
 export default function ViewDedication({ id: propId }) {
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
@@ -27,38 +10,21 @@ export default function ViewDedication({ id: propId }) {
       new URLSearchParams(window.location.search).get("id") ||
       window.location.pathname.match(/\/view\/([^\/]+)/)?.[1];
 
-    if (!id) {
-      setError("No id provided");
-      setLoading(false);
-      return;
-    }
+    if (!id) return;
 
     async function fetchVideo() {
-      try {
-        const res = await fetch(
-          `https://blowithback.onrender.com/view/${encodeURIComponent(id)}`,
-          { cache: "no-store" }
-        );
-        if (!res.ok) throw new Error(`status ${res.status}`);
-        const json = await res.json();
-        setData(json);
-      } catch (err) {
-        console.error("❌ fetch error:", err);
-        setError(String(err));
-      } finally {
-        setLoading(false);
-      }
+      const res = await fetch(`https://blowithback.onrender.com/view/${id}`);
+      const json = await res.json();
+      setData(json);
     }
 
     fetchVideo();
   }, [propId]);
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div style={{ color: "red" }}>Error: {error}</div>;
-  if (!data) return <div>No data found</div>;
+  if (!data) return <div>Loading...</div>;
 
-  const groupVideos = videoGroups[data.videoGroupKey] || [];
-  const videoUrl = groupVideos[currentIndex];
+  const videoLinks = data.videoLinks || [];
+  const currentVideo = videoLinks[currentIndex];
 
   return (
     <div style={{ textAlign: "center", padding: "20px" }}>
@@ -73,10 +39,9 @@ export default function ViewDedication({ id: propId }) {
         <strong>Message:</strong> {data.message}
       </p>
 
-      {videoUrl ? (
+      {currentVideo ? (
         <video
-          key={videoUrl}
-          src={videoUrl}
+          src={currentVideo}
           controls
           autoPlay
           playsInline
@@ -88,15 +53,15 @@ export default function ViewDedication({ id: propId }) {
           }}
         />
       ) : (
-        <div>No video available for group "{data.videoGroupKey}"</div>
+        <div>No video available</div>
       )}
 
-      {groupVideos.length > 1 && (
+      {videoLinks.length > 1 && (
         <div style={{ marginTop: "12px" }}>
           <button
             onClick={() =>
               setCurrentIndex(
-                (currentIndex - 1 + groupVideos.length) % groupVideos.length
+                (currentIndex - 1 + videoLinks.length) % videoLinks.length
               )
             }
           >
@@ -105,7 +70,7 @@ export default function ViewDedication({ id: propId }) {
           <button
             style={{ marginLeft: "10px" }}
             onClick={() =>
-              setCurrentIndex((currentIndex + 1) % groupVideos.length)
+              setCurrentIndex((currentIndex + 1) % videoLinks.length)
             }
           >
             Next ▶
