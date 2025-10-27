@@ -4,12 +4,16 @@ import { useEffect, useState } from "react";
 const videoGroups = {
   sensi1: [
     "https://res.cloudinary.com/do6ea0ear/video/upload/v1734723456/sensi1_1.mp4",
-    "https://res.cloudinary.com/do6ea0ear/video/upload/v1734723456/sensi1_2.mp4",
+    
   ],
+
+
   puff1: [
-    "https://res.cloudinary.com/do6ea0ear/video/upload/v1734723456/puff1.mp4",
+    "https://res.cloudinary.com/do6ea0ear/video/upload/v1759161847/puff3_ywhjvy.mp4",
   ],
 };
+
+
 
 export default function ViewDedication({ id: propId }) {
   const [data, setData] = useState(null);
