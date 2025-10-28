@@ -44,10 +44,13 @@ export default function ViewDedication({ id: propId }) {
         formData.append("file", blob, "blow.wav");
 
         // Send to ML API
-        const res = await fetch("https://blow-mlservice.onrender.com/detect", {
-          method: "POST",
-          body: formData,
-        });
+        const res = await fetch(
+          "https://blow-mlservice.onrender.com/classify",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
         const json = await res.json();
 
         // Example response: { approved: true/false, confidence: 0.94 }
