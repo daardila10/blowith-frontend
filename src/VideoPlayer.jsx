@@ -53,14 +53,23 @@ export default function VideoPlayer({ publicId }) {
           formData.append("file", blob, "audio.webm");
 
           try {
-            const res = await fetch("http://localhost:8000/classify", {
-              method: "POST",
-              body: formData,
-            });
+            // ✅ Use your deployed ML service
+            const res = await fetch(
+              "https://blow-mlservice.onrender.com/classify",
+              {
+                method: "POST",
+                body: formData,
+              }
+            );
             const data = await res.json();
-            if (data.blowProb > 0.5) setBlowDetected(true);
+
+            // You can adjust the threshold if needed
+            if (data.blowProb > 0.5) {
+              setBlowDetected(true);
+              console.log("🎉 Blow detected! Probability:", data.blowProb);
+            }
           } catch (err) {
-            console.error("Error sending audio:", err);
+            console.error("Error sending audio to ML service:", err);
           }
 
           chunks = [];
