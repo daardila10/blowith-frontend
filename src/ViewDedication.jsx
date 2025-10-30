@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 export default function ViewDedication({ id: propId }) {
   const [data, setData] = useState(null);
@@ -15,65 +15,98 @@ export default function ViewDedication({ id: propId }) {
     if (!id) return;
 
     async function fetchVideo() {
-      const res = await fetch(`https://blowithback.onrender.com/view/${id}`);
-      const json = await res.json();
-      setData(json);
+      try {
+        const res = await fetch(`https://blowithback.onrender.com/view/${id}`);
+        const json = await res.json();
+        setData(json);
+      } catch (e) {
+        console.error("Failed to fetch view data", e);
+      }
     }
 
     fetchVideo();
   }, [propId]);
 
-  // -----------------------------
-  // 🧠 Function to detect blow via ML model
-  // -----------------------------
+  const handleNext = () => {
+    setCurrentIndex((i) => (i + 1) % (data?.videoLinks?.length || 1));
+  };
+
   const detectBlow = async () => {
     try {
       setIsDetecting(true);
       setApproved(false);
 
-      // Capture audio (for 2 seconds for example)
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const mime = MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : MediaRecorder.isTypeSupported("audio/ogg")
+        ? "audio/ogg"
+        : "audio/wav";
+      const mediaRecorder = new MediaRecorder(
+        stream,
+        mime ? { mimeType: mime } : undefined
+      );
       const chunks = [];
 
-      mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunks.push(e.data);
+      };
 
       mediaRecorder.onstop = async () => {
-        const blob = new Blob(chunks, { type: "audio/wav" });
-        const formData = new FormData();
-        formData.append("file", blob, "blow.wav");
+        try {
+          const blob = new Blob(chunks, {
+            type: chunks[0]?.type || mime || "audio/wav",
+          });
+          const ext = blob.type.includes("webm")
+            ? "webm"
+            : blob.type.includes("ogg")
+            ? "ogg"
+            : "wav";
+          const formData = new FormData();
+          formData.append("file", blob, `blow.${ext}`);
 
-        // Send to ML API
-        const res = await fetch(
-          "https://blow-mlservice.onrender.com/classify",
-          {
-            method: "POST",
-            body: formData,
+          const res = await fetch(
+            "https://blow-mlservice.onrender.com/classify",
+            {
+              method: "POST",
+              body: formData,
+            }
+          );
+
+          const json = await res.json();
+          console.debug("ML service response:", res.status, json);
+
+          const prob = Number(
+            json?.blowProb ??
+              json?.prob ??
+              json?.probability ??
+              json?.probability ??
+              0
+          );
+          const THRESH = 0.55;
+
+          if (prob > THRESH) {
+            setApproved(true);
+            handleNext();
+          } else {
+            alert("❌ Blow not detected, please try again!");
           }
-        );
-        const json = await res.json();
-
-        // Example response: { approved: true/false, confidence: 0.94 }
-        if (json.approved) {
-          setApproved(true);
-          handleNext();
-        } else {
-          alert("❌ Blow not detected, please try again!");
+        } catch (e) {
+          console.error("Error sending audio to ML service:", e);
+          alert("Detection failed — check console for details.");
+        } finally {
+          setIsDetecting(false);
+          stream.getTracks().forEach((t) => t.stop());
         }
-        setIsDetecting(false);
       };
 
       mediaRecorder.start();
-      setTimeout(() => mediaRecorder.stop(), 2000); // record 2s
+      setTimeout(() => mediaRecorder.stop(), 2000); // record ~2s
     } catch (err) {
-      console.error(err);
+      console.error("Microphone access or MediaRecorder error:", err);
       alert("Microphone access denied or detection error");
       setIsDetecting(false);
     }
-  };
-
-  const handleNext = () => {
-    setCurrentIndex((currentIndex + 1) % (data?.videoLinks?.length || 1));
   };
 
   if (!data) return <div>Loading...</div>;
@@ -126,7 +159,11 @@ export default function ViewDedication({ id: propId }) {
               cursor: isDetecting ? "not-allowed" : "pointer",
             }}
           >
-            {isDetecting ? "Listening..." : "🎤 Blow to continue"}
+            {isDetecting
+              ? "Listening..."
+              : approved
+              ? "✅ Detected"
+              : "🎤 Blow to continue"}
           </button>
         </div>
       )}
