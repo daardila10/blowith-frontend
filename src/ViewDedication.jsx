@@ -1,256 +1,103 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
-export default function ViewDedication({ id: propId }) {
-  const [data, setData] = useState(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isDetecting, setIsDetecting] = useState(false);
-  const [approved, setApproved] = useState(false);
-  const [experienceEnded, setExperienceEnded] = useState(false);
-  const videoRef = useRef(null);
-  const preloadRef = useRef(null);
+export default function VideoExperience() {
+  const videos = [
+    {
+      src: "/videos/video1.mp4",
+      from: "Alice",
+      to: "Bob",
+      message: "Be brave!",
+    },
+    {
+      src: "/videos/video2.mp4",
+      from: "Bob",
+      to: "Alice",
+      message: "Stay strong!",
+    },
+  ];
 
+  const [index, setIndex] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const currentRef = useRef(null);
+  const nextRef = useRef(null);
+  const nextIndex = (index + 1) % videos.length;
+
+  // ✅ Preload next video
   useEffect(() => {
-    const id =
-      propId ||
-      new URLSearchParams(window.location.search).get("id") ||
-      window.location.pathname.match(/\/view\/([^\/]+)/)?.[1];
+    if (nextRef.current) nextRef.current.load();
+  }, [index]);
 
-    if (!id) return;
-
-    async function fetchVideo() {
-      try {
-        const res = await fetch(`https://blowithback.onrender.com/view/${id}`);
-        const json = await res.json();
-        setData(json);
-      } catch (e) {
-        console.error("Failed to fetch view data", e);
-      }
-    }
-
-    fetchVideo();
-  }, [propId]);
-
-  // Preload next video
-  useEffect(() => {
-    if (!data?.videoLinks?.length) return;
-    const nextIndex = (currentIndex + 1) % data.videoLinks.length;
-    const nextVideo = data.videoLinks[nextIndex];
-    if (preloadRef.current && nextVideo) {
-      preloadRef.current.src = nextVideo;
-      preloadRef.current.load();
-    }
-  }, [currentIndex, data]);
-
-  const handleNext = () => {
-    if (videoRef.current) {
-      // Fade out current video before switching
-      videoRef.current.style.opacity = 0;
-    }
-
-    setTimeout(() => {
-      const nextIndex = currentIndex + 1;
-      if (nextIndex < data.videoLinks.length) {
-        setCurrentIndex(nextIndex);
-      } else {
-        // End of experience
-        setExperienceEnded(true);
-        setCurrentIndex(0);
-      }
-    }, 300); // wait for fade
+  const handleEnd = () => {
+    setPlaying(false);
+    setTimeout(() => setIndex(nextIndex), 150);
   };
 
-  const detectBlow = async () => {
-    try {
-      setIsDetecting(true);
-      setApproved(false);
-
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mime = MediaRecorder.isTypeSupported("audio/webm")
-        ? "audio/webm"
-        : MediaRecorder.isTypeSupported("audio/ogg")
-        ? "audio/ogg"
-        : "audio/wav";
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: mime });
-      const chunks = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) chunks.push(e.data);
-      };
-
-      mediaRecorder.onstop = async () => {
-        try {
-          const blob = new Blob(chunks, { type: mime });
-          const formData = new FormData();
-          formData.append("file", blob, "blow.wav");
-
-          const res = await fetch(
-            "https://blow-mlservice.onrender.com/classify",
-            {
-              method: "POST",
-              body: formData,
-            }
-          );
-
-          const json = await res.json();
-          const prediction = json?.prediction || "";
-          const prob = Number(json?.probability ?? 0);
-          const THRESH = 0.55;
-
-          if (prediction.toLowerCase() === "blow" && prob > THRESH) {
-            setApproved(true);
-            handleNext();
-          } else {
-            alert("❌ Blow not detected, please try again!");
-          }
-        } catch (e) {
-          console.error("Error sending audio to ML service:", e);
-        } finally {
-          setIsDetecting(false);
-          stream.getTracks().forEach((t) => t.stop());
-        }
-      };
-
-      mediaRecorder.start();
-      setTimeout(() => mediaRecorder.stop(), 2000);
-    } catch (err) {
-      alert("Microphone access denied or detection error");
-      setIsDetecting(false);
+  const togglePlay = () => {
+    const video = currentRef.current;
+    if (video.paused) {
+      video.play();
+      setPlaying(true);
+    } else {
+      video.pause();
+      setPlaying(false);
     }
   };
-
-  const handleVideoTap = () => {
-    if (!videoRef.current) return;
-    if (videoRef.current.paused) videoRef.current.play();
-    else videoRef.current.pause();
-  };
-
-  if (!data) return <div>Loading...</div>;
-
-  const videoLinks = data.videoLinks || [];
-  const currentVideo = videoLinks[currentIndex];
 
   return (
-    <div
-      style={{
-        position: "relative",
-        width: "100vw",
-        height: "100vh",
-        overflow: "hidden",
-        backgroundColor: "black",
-      }}
-    >
-      {/* === VIDEOS with crossfade === */}
-      <div style={{ position: "relative", width: "100%", height: "100%" }}>
-        <video
-          key={currentVideo}
-          ref={videoRef}
-          src={currentVideo}
-          autoPlay
-          playsInline
-          onClick={handleVideoTap}
-          onEnded={handleNext}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            position: "absolute",
-            top: 0,
-            left: 0,
-            opacity: 1,
-            transition: "opacity 0.4s ease-in-out",
-          }}
-        />
-        {videoLinks[currentIndex + 1] && (
-          <video
-            ref={preloadRef}
-            src={videoLinks[currentIndex + 1]}
-            preload="auto"
+    <div className="relative w-full min-h-screen bg-black flex flex-col items-center justify-center">
+      {/* 🎥 Video container */}
+      <div
+        className="
+          relative overflow-hidden
+          w-[95%] sm:w-[85%] md:w-[70%] lg:w-[60%]
+          h-[60vh] sm:h-[60vh] md:h-[55vh] lg:h-[50vh]
+          rounded-2xl shadow-lg
+        "
+      >
+        <AnimatePresence mode="popLayout">
+          <motion.video
+            key={videos[index].src}
+            ref={currentRef}
+            src={videos[index].src}
+            className="absolute w-full h-full object-cover rounded-2xl"
+            autoPlay={playing}
             muted
-            playsInline
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              position: "absolute",
-              top: 0,
-              left: 0,
-              opacity: 0,
-            }}
+            onClick={togglePlay}
+            onEnded={handleEnd}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }} // ⚡️ Fast fade
           />
-        )}
+        </AnimatePresence>
+
+        {/* Preload next video */}
+        <video
+          ref={nextRef}
+          src={videos[nextIndex].src}
+          className="hidden"
+          preload="auto"
+        />
       </div>
 
-      {/* === Action Button === */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: "25px",
-          left: "50%",
-          transform: "translateX(-50%)",
-        }}
-      >
-        <button
-          onClick={
-            experienceEnded ? () => setExperienceEnded(false) : detectBlow
-          }
-          disabled={isDetecting}
-          style={{
-            backgroundColor: isDetecting ? "#777" : "#ff3366",
-            color: "white",
-            border: "none",
-            padding: "10px 20px",
-            borderRadius: "30px",
-            fontSize: "1em",
-            cursor: "pointer",
-            boxShadow: "0 0 20px rgba(255, 51, 102, 0.5)",
-            opacity: 0.9,
-          }}
-        >
-          {experienceEnded
-            ? "🔁 Replay Experience"
-            : isDetecting
-            ? "🎤 Listening..."
-            : approved
-            ? "✅ Continue"
-            : "▶️ Start Experience"}
-        </button>
-        {/* === Dedication Info === */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: "90px",
-            left: 0,
-            width: "100%",
-            color: "white",
-            textAlign: "center",
-            padding: "0 20px",
-            background:
-              "linear-gradient(transparent, rgba(0, 0, 0, 0.7) 70%, rgba(0, 0, 0, 0.9))",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontSize: "1.1em",
-              marginBottom: "6px",
-            }}
-          >
-            <span>From: {data.senderName}</span>
-            <span>To: {data.receiverName}</span>
-          </div>
-          <p
-            style={{
-              fontSize: "1.2em",
-              fontWeight: "400",
-              margin: "8px 0 0",
-              opacity: 0.9,
-            }}
-          >
-            {data.message}
-          </p>
-        </div>
+      {/* ✉️ Info section */}
+      <div className="flex justify-between w-[90%] sm:w-[80%] mt-3 text-white text-sm font-semibold">
+        <span>From: {videos[index].from}</span>
+        <span>To: {videos[index].to}</span>
       </div>
+
+      <p className="text-white mt-2 text-center px-4">
+        {videos[index].message}
+      </p>
+
+      {/* 🟢 Button lower on screen */}
+      <button
+        onClick={togglePlay}
+        className="absolute bottom-6 bg-white/80 text-black font-semibold py-2 px-5 rounded-full shadow-lg"
+      >
+        {playing ? "Pause" : "Start Experience"}
+      </button>
     </div>
   );
 }
