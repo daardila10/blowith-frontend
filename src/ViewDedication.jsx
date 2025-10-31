@@ -5,7 +5,9 @@ export default function ViewDedication({ id: propId }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDetecting, setIsDetecting] = useState(false);
   const [approved, setApproved] = useState(false);
-  const preloadRef = useRef(null); // preloader for next video
+  const [started, setStarted] = useState(false);
+  const preloadRef = useRef(null);
+  const videoRef = useRef(null);
 
   useEffect(() => {
     const id =
@@ -28,7 +30,7 @@ export default function ViewDedication({ id: propId }) {
     fetchVideo();
   }, [propId]);
 
-  // When currentIndex changes → preload next video
+  // preload next video
   useEffect(() => {
     if (!data?.videoLinks?.length) return;
     const nextIndex = (currentIndex + 1) % data.videoLinks.length;
@@ -86,28 +88,18 @@ export default function ViewDedication({ id: propId }) {
           );
 
           const json = await res.json();
-          console.debug("ML service response:", res.status, json);
-
           const prediction = json?.prediction || "";
           const prob = Number(json?.probability ?? 0);
           const THRESH = 0.55;
 
           if (prediction.toLowerCase() === "blow" && prob > THRESH) {
-            console.log("✅ Blow detected with probability:", prob);
             setApproved(true);
             handleNext();
           } else {
-            console.warn(
-              "❌ Not a blow. Prediction:",
-              prediction,
-              "Prob:",
-              prob
-            );
             alert("❌ Blow not detected, please try again!");
           }
         } catch (e) {
-          console.error("Error sending audio to ML service:", e);
-          alert("Detection failed — check console for details.");
+          console.error("Error sending audio:", e);
         } finally {
           setIsDetecting(false);
           stream.getTracks().forEach((t) => t.stop());
@@ -115,10 +107,10 @@ export default function ViewDedication({ id: propId }) {
       };
 
       mediaRecorder.start();
-      setTimeout(() => mediaRecorder.stop(), 2000); // record ~2s
+      setTimeout(() => mediaRecorder.stop(), 2000);
     } catch (err) {
-      console.error("Microphone access or MediaRecorder error:", err);
-      alert("Microphone access denied or detection error");
+      console.error("Mic error:", err);
+      alert("Microphone access denied or error");
       setIsDetecting(false);
     }
   };
@@ -131,82 +123,95 @@ export default function ViewDedication({ id: propId }) {
   return (
     <div
       style={{
-        textAlign: "center",
-        padding: "20px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "space-between",
-        minHeight: "100vh",
+        position: "relative",
+        width: "100vw",
+        height: "100vh",
+        overflow: "hidden",
+        background: "black",
       }}
     >
-      {/* === VIDEO === */}
-      {currentVideo ? (
+      {/* === FULLSCREEN VIDEO === */}
+      {currentVideo && (
         <video
+          ref={videoRef}
           key={currentVideo}
           src={currentVideo}
-          controls
-          autoPlay
+          autoPlay={started}
           playsInline
+          muted={false}
+          controls={false}
+          onEnded={() => handleNext()}
           style={{
-            width: "95%",
-            maxWidth: "900px",
-            borderRadius: "16px",
-            boxShadow: "0 6px 24px rgba(0,0,0,0.25)",
-            marginBottom: "20px",
-            transition: "opacity 0.6s ease-in-out",
+            position: "absolute",
+            top: "0",
+            left: "0",
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            zIndex: 1,
+            backgroundColor: "black",
           }}
         />
-      ) : (
-        <div>No video available</div>
       )}
 
-      {/* Hidden preloader */}
+      {/* preload next video */}
       <video ref={preloadRef} preload="auto" style={{ display: "none" }} />
-      {videoLinks.length > 1 && (
-        <div style={{ marginTop: "20px" }}>
-          <button
-            onClick={detectBlow}
-            disabled={isDetecting}
-            style={{
-              backgroundColor: isDetecting ? "#bbb" : "#007bff",
-              color: "white",
-              border: "none",
-              padding: "12px 20px",
-              borderRadius: "10px",
-              cursor: isDetecting ? "not-allowed" : "pointer",
-              fontSize: "1.1em",
-            }}
-          >
-            {isDetecting
-              ? "🎤 Listening..."
-              : approved
-              ? "✅ Blow detected"
-              : "🌬️  continue"}
-          </button>
-        </div>
-      )}
 
-      {/* === MESSAGE === */}
-      <div style={{ width: "100%", maxWidth: "800px" }}>
-        <h2>🎁 Dedication</h2>
-        <p>
-          <strong>From:</strong> {data.senderName}
-        </p>
-        <p>
-          <strong>To:</strong> {data.receiverName}
-        </p>
-        <p
+      {/* === BOTTOM OVERLAY === */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          width: "100%",
+          padding: "24px",
+          background:
+            "linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0.1))",
+          color: "white",
+          textAlign: "center",
+          zIndex: 2,
+        }}
+      >
+        {/* Start or Continue Button */}
+        <button
+          onClick={() => {
+            if (!started) setStarted(true);
+            else detectBlow();
+          }}
+          disabled={isDetecting}
           style={{
-            background: "#f9f9f9",
-            padding: "12px",
-            borderRadius: "8px",
-            marginTop: "8px",
+            width: "80%",
+            maxWidth: "300px",
+            backgroundColor: isDetecting ? "#666" : "#ff4d4f",
+            color: "white",
+            border: "none",
+            padding: "14px 20px",
+            borderRadius: "12px",
             fontSize: "1.1em",
+            cursor: isDetecting ? "not-allowed" : "pointer",
+            marginBottom: "20px",
+            boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
           }}
         >
-          {data.message}
-        </p>
+          {!started
+            ? "▶️ Start Experience"
+            : isDetecting
+            ? "🎤 Listening..."
+            : "🌬️ Continue"}
+        </button>
+
+        {/* Message Section */}
+        <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+          <p style={{ marginBottom: "4px", fontWeight: "bold" }}>
+            From: {data.senderName}
+          </p>
+          <p style={{ marginBottom: "4px", fontWeight: "bold" }}>
+            To: {data.receiverName}
+          </p>
+          <p style={{ fontSize: "1.1em", lineHeight: "1.4em" }}>
+            {data.message}
+          </p>
+        </div>
       </div>
     </div>
   );
