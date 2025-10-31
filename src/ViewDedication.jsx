@@ -5,9 +5,9 @@ export default function ViewDedication({ id: propId }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDetecting, setIsDetecting] = useState(false);
   const [approved, setApproved] = useState(false);
-  const [started, setStarted] = useState(false);
-  const preloadRef = useRef(null);
+  const [experienceEnded, setExperienceEnded] = useState(false);
   const videoRef = useRef(null);
+  const preloadRef = useRef(null);
 
   useEffect(() => {
     const id =
@@ -30,7 +30,7 @@ export default function ViewDedication({ id: propId }) {
     fetchVideo();
   }, [propId]);
 
-  // preload next video
+  // Preload next video
   useEffect(() => {
     if (!data?.videoLinks?.length) return;
     const nextIndex = (currentIndex + 1) % data.videoLinks.length;
@@ -42,7 +42,14 @@ export default function ViewDedication({ id: propId }) {
   }, [currentIndex, data]);
 
   const handleNext = () => {
-    setCurrentIndex((i) => (i + 1) % (data?.videoLinks?.length || 1));
+    const nextIndex = currentIndex + 1;
+    if (nextIndex < data.videoLinks.length) {
+      setCurrentIndex(nextIndex);
+    } else {
+      // End of experience
+      setExperienceEnded(true);
+      setCurrentIndex(0);
+    }
   };
 
   const detectBlow = async () => {
@@ -56,10 +63,7 @@ export default function ViewDedication({ id: propId }) {
         : MediaRecorder.isTypeSupported("audio/ogg")
         ? "audio/ogg"
         : "audio/wav";
-      const mediaRecorder = new MediaRecorder(
-        stream,
-        mime ? { mimeType: mime } : undefined
-      );
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: mime });
       const chunks = [];
 
       mediaRecorder.ondataavailable = (e) => {
@@ -68,24 +72,14 @@ export default function ViewDedication({ id: propId }) {
 
       mediaRecorder.onstop = async () => {
         try {
-          const blob = new Blob(chunks, {
-            type: chunks[0]?.type || mime || "audio/wav",
-          });
-          const ext = blob.type.includes("webm")
-            ? "webm"
-            : blob.type.includes("ogg")
-            ? "ogg"
-            : "wav";
+          const blob = new Blob(chunks, { type: mime });
           const formData = new FormData();
-          formData.append("file", blob, `blow.${ext}`);
+          formData.append("file", blob, "blow.wav");
 
-          const res = await fetch(
-            "https://blow-mlservice.onrender.com/classify",
-            {
-              method: "POST",
-              body: formData,
-            }
-          );
+          const res = await fetch("https://blow-mlservice.onrender.com/classify", {
+            method: "POST",
+            body: formData,
+          });
 
           const json = await res.json();
           const prediction = json?.prediction || "";
@@ -99,7 +93,7 @@ export default function ViewDedication({ id: propId }) {
             alert("❌ Blow not detected, please try again!");
           }
         } catch (e) {
-          console.error("Error sending audio:", e);
+          console.error("Error sending audio to ML service:", e);
         } finally {
           setIsDetecting(false);
           stream.getTracks().forEach((t) => t.stop());
@@ -109,10 +103,15 @@ export default function ViewDedication({ id: propId }) {
       mediaRecorder.start();
       setTimeout(() => mediaRecorder.stop(), 2000);
     } catch (err) {
-      console.error("Mic error:", err);
-      alert("Microphone access denied or error");
+      alert("Microphone access denied or detection error");
       setIsDetecting(false);
     }
+  };
+
+  const handleVideoTap = () => {
+    if (!videoRef.current) return;
+    if (videoRef.current.paused) videoRef.current.play();
+    else videoRef.current.pause();
   };
 
   if (!data) return <div>Loading...</div>;
@@ -127,92 +126,101 @@ export default function ViewDedication({ id: propId }) {
         width: "100vw",
         height: "100vh",
         overflow: "hidden",
-        background: "black",
+        backgroundColor: "black",
       }}
     >
-      {/* === FULLSCREEN VIDEO === */}
-      {currentVideo && (
+      {/* === VIDEO === */}
+      {currentVideo ? (
         <video
-          ref={videoRef}
           key={currentVideo}
+          ref={videoRef}
           src={currentVideo}
-          autoPlay={started}
+          autoPlay
           playsInline
-          muted={false}
-          controls={false}
-          onEnded={() => handleNext()}
+          onClick={handleVideoTap}
+          onEnded={handleNext}
           style={{
-            position: "absolute",
-            top: "0",
-            left: "0",
             width: "100%",
             height: "100%",
             objectFit: "cover",
-            zIndex: 1,
-            backgroundColor: "black",
           }}
         />
+      ) : (
+        <div>No video available</div>
       )}
 
-      {/* preload next video */}
-      <video ref={preloadRef} preload="auto" style={{ display: "none" }} />
-
-      {/* === BOTTOM OVERLAY === */}
+      {/* === Dedication Info === */}
       <div
         style={{
           position: "absolute",
-          bottom: 0,
+          bottom: "100px",
           left: 0,
           width: "100%",
-          padding: "24px",
-          background:
-            "linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0.1))",
           color: "white",
           textAlign: "center",
-          zIndex: 2,
+          padding: "0 20px",
+          background:
+            "linear-gradient(transparent, rgba(0, 0, 0, 0.7) 70%, rgba(0, 0, 0, 0.9))",
         }}
       >
-        {/* Start or Continue Button */}
-        <button
-          onClick={() => {
-            if (!started) setStarted(true);
-            else detectBlow();
-          }}
-          disabled={isDetecting}
+        <div
           style={{
-            width: "80%",
-            maxWidth: "300px",
-            backgroundColor: isDetecting ? "#666" : "#ff4d4f",
-            color: "white",
-            border: "none",
-            padding: "14px 20px",
-            borderRadius: "12px",
+            display: "flex",
+            justifyContent: "space-between",
             fontSize: "1.1em",
-            cursor: isDetecting ? "not-allowed" : "pointer",
-            marginBottom: "20px",
-            boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
+            marginBottom: "6px",
           }}
         >
-          {!started
-            ? "▶️ Start Experience"
+          <span>From: {data.senderName}</span>
+          <span>To: {data.receiverName}</span>
+        </div>
+        <p
+          style={{
+            fontSize: "1.2em",
+            fontWeight: "400",
+            margin: "8px 0 0",
+            opacity: 0.9,
+          }}
+        >
+          {data.message}
+        </p>
+      </div>
+
+      {/* === Action Button === */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: "20px",
+          left: "50%",
+          transform: "translateX(-50%)",
+        }}
+      >
+        <button
+          onClick={experienceEnded ? () => setExperienceEnded(false) : detectBlow}
+          disabled={isDetecting}
+          style={{
+            backgroundColor: isDetecting ? "#777" : "#ff3366",
+            color: "white",
+            border: "none",
+            padding: "12px 26px",
+            borderRadius: "30px",
+            fontSize: "1.1em",
+            cursor: "pointer",
+            boxShadow: "0 0 20px rgba(255, 51, 102, 0.5)",
+          }}
+        >
+          {experienceEnded
+            ? "🔁 Replay Experience"
             : isDetecting
             ? "🎤 Listening..."
-            : "🌬️ Continue"}
+            : approved
+            ? "✅ Continue"
+            : "▶️ Start Experience"}
         </button>
-
-        {/* Message Section */}
-        <div style={{ maxWidth: "600px", margin: "0 auto" }}>
-          <p style={{ marginBottom: "4px", fontWeight: "bold" }}>
-            From: {data.senderName}
-          </p>
-          <p style={{ marginBottom: "4px", fontWeight: "bold" }}>
-            To: {data.receiverName}
-          </p>
-          <p style={{ fontSize: "1.1em", lineHeight: "1.4em" }}>
-            {data.message}
-          </p>
-        </div>
       </div>
+
+      {/* Hidden preloader */}
+      <video ref={preloadRef} preload="auto" style={{ display: "none" }} />
     </div>
   );
 }
