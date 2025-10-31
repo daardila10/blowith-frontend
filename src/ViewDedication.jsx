@@ -163,6 +163,29 @@ export default function ViewDedication({ id: propId }) {
 
       {/* Hidden preloader */}
       <video ref={preloadRef} preload="auto" style={{ display: "none" }} />
+      {videoLinks.length > 1 && (
+        <div style={{ marginTop: "20px" }}>
+          <button
+            onClick={detectBlow}
+            disabled={isDetecting}
+            style={{
+              backgroundColor: isDetecting ? "#bbb" : "#007bff",
+              color: "white",
+              border: "none",
+              padding: "12px 20px",
+              borderRadius: "10px",
+              cursor: isDetecting ? "not-allowed" : "pointer",
+              fontSize: "1.1em",
+            }}
+          >
+            {isDetecting
+              ? "🎤 Listening..."
+              : approved
+              ? "✅ Blow detected"
+              : "🌬️  continue"}
+          </button>
+        </div>
+      )}
 
       {/* === MESSAGE === */}
       <div style={{ width: "100%", maxWidth: "800px" }}>
@@ -184,30 +207,6 @@ export default function ViewDedication({ id: propId }) {
         >
           {data.message}
         </p>
-
-        {videoLinks.length > 1 && (
-          <div style={{ marginTop: "20px" }}>
-            <button
-              onClick={detectBlow}
-              disabled={isDetecting}
-              style={{
-                backgroundColor: isDetecting ? "#bbb" : "#007bff",
-                color: "white",
-                border: "none",
-                padding: "12px 20px",
-                borderRadius: "10px",
-                cursor: isDetecting ? "not-allowed" : "pointer",
-                fontSize: "1.1em",
-              }}
-            >
-              {isDetecting
-                ? "🎤 Listening..."
-                : approved
-                ? "✅ Blow detected"
-                : "🌬️  continue"}
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
