@@ -76,19 +76,21 @@ export default function ViewDedication({ id: propId }) {
           const json = await res.json();
           console.debug("ML service response:", res.status, json);
 
-          const prob = Number(
-            json?.blowProb ??
-              json?.prob ??
-              json?.probability ??
-              json?.probability ??
-              0
-          );
+          const prediction = json?.prediction || "";
+          const prob = Number(json?.probability ?? 0);
           const THRESH = 0.55;
 
-          if (prob > THRESH) {
+          if (prediction.toLowerCase() === "blow" && prob > THRESH) {
+            console.log("✅ Blow detected with probability:", prob);
             setApproved(true);
             handleNext();
           } else {
+            console.warn(
+              "❌ Not a blow. Prediction:",
+              prediction,
+              "Prob:",
+              prob
+            );
             alert("❌ Blow not detected, please try again!");
           }
         } catch (e) {
