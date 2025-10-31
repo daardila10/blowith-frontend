@@ -180,43 +180,6 @@ export default function ViewDedication({ id: propId }) {
         )}
       </div>
 
-      {/* === Dedication Info === */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: "90px",
-          left: 0,
-          width: "100%",
-          color: "white",
-          textAlign: "center",
-          padding: "0 20px",
-          background:
-            "linear-gradient(transparent, rgba(0, 0, 0, 0.7) 70%, rgba(0, 0, 0, 0.9))",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            fontSize: "1.1em",
-            marginBottom: "6px",
-          }}
-        >
-          <span>From: {data.senderName}</span>
-          <span>To: {data.receiverName}</span>
-        </div>
-        <p
-          style={{
-            fontSize: "1.2em",
-            fontWeight: "400",
-            margin: "8px 0 0",
-            opacity: 0.9,
-          }}
-        >
-          {data.message}
-        </p>
-      </div>
-
       {/* === Action Button === */}
       <div
         style={{
@@ -251,6 +214,42 @@ export default function ViewDedication({ id: propId }) {
             ? "✅ Continue"
             : "▶️ Start Experience"}
         </button>
+        {/* === Dedication Info === */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: "90px",
+            left: 0,
+            width: "100%",
+            color: "white",
+            textAlign: "center",
+            padding: "0 20px",
+            background:
+              "linear-gradient(transparent, rgba(0, 0, 0, 0.7) 70%, rgba(0, 0, 0, 0.9))",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "1.1em",
+              marginBottom: "6px",
+            }}
+          >
+            <span>From: {data.senderName}</span>
+            <span>To: {data.receiverName}</span>
+          </div>
+          <p
+            style={{
+              fontSize: "1.2em",
+              fontWeight: "400",
+              margin: "8px 0 0",
+              opacity: 0.9,
+            }}
+          >
+            {data.message}
+          </p>
+        </div>
       </div>
     </div>
   );
