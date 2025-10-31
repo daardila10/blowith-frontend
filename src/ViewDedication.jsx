@@ -42,14 +42,21 @@ export default function ViewDedication({ id: propId }) {
   }, [currentIndex, data]);
 
   const handleNext = () => {
-    const nextIndex = currentIndex + 1;
-    if (nextIndex < data.videoLinks.length) {
-      setCurrentIndex(nextIndex);
-    } else {
-      // End of experience
-      setExperienceEnded(true);
-      setCurrentIndex(0);
+    if (videoRef.current) {
+      // Fade out current video before switching
+      videoRef.current.style.opacity = 0;
     }
+
+    setTimeout(() => {
+      const nextIndex = currentIndex + 1;
+      if (nextIndex < data.videoLinks.length) {
+        setCurrentIndex(nextIndex);
+      } else {
+        // End of experience
+        setExperienceEnded(true);
+        setCurrentIndex(0);
+      }
+    }, 300); // wait for fade
   };
 
   const detectBlow = async () => {
@@ -132,8 +139,8 @@ export default function ViewDedication({ id: propId }) {
         backgroundColor: "black",
       }}
     >
-      {/* === VIDEO === */}
-      {currentVideo ? (
+      {/* === VIDEOS with crossfade === */}
+      <div style={{ position: "relative", width: "100%", height: "100%" }}>
         <video
           key={currentVideo}
           ref={videoRef}
@@ -146,17 +153,38 @@ export default function ViewDedication({ id: propId }) {
             width: "100%",
             height: "100%",
             objectFit: "cover",
+            position: "absolute",
+            top: 0,
+            left: 0,
+            opacity: 1,
+            transition: "opacity 0.4s ease-in-out",
           }}
         />
-      ) : (
-        <div>No video available</div>
-      )}
+        {videoLinks[currentIndex + 1] && (
+          <video
+            ref={preloadRef}
+            src={videoLinks[currentIndex + 1]}
+            preload="auto"
+            muted
+            playsInline
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              position: "absolute",
+              top: 0,
+              left: 0,
+              opacity: 0,
+            }}
+          />
+        )}
+      </div>
 
       {/* === Dedication Info === */}
       <div
         style={{
           position: "absolute",
-          bottom: "100px",
+          bottom: "90px",
           left: 0,
           width: "100%",
           color: "white",
@@ -193,7 +221,7 @@ export default function ViewDedication({ id: propId }) {
       <div
         style={{
           position: "absolute",
-          bottom: "20px",
+          bottom: "25px",
           left: "50%",
           transform: "translateX(-50%)",
         }}
@@ -207,11 +235,12 @@ export default function ViewDedication({ id: propId }) {
             backgroundColor: isDetecting ? "#777" : "#ff3366",
             color: "white",
             border: "none",
-            padding: "12px 26px",
+            padding: "10px 20px",
             borderRadius: "30px",
-            fontSize: "1.1em",
+            fontSize: "1em",
             cursor: "pointer",
             boxShadow: "0 0 20px rgba(255, 51, 102, 0.5)",
+            opacity: 0.9,
           }}
         >
           {experienceEnded
@@ -223,9 +252,6 @@ export default function ViewDedication({ id: propId }) {
             : "▶️ Start Experience"}
         </button>
       </div>
-
-      {/* Hidden preloader */}
-      <video ref={preloadRef} preload="auto" style={{ display: "none" }} />
     </div>
   );
 }
