@@ -76,10 +76,13 @@ export default function ViewDedication({ id: propId }) {
           const formData = new FormData();
           formData.append("file", blob, "blow.wav");
 
-          const res = await fetch("https://blow-mlservice.onrender.com/classify", {
-            method: "POST",
-            body: formData,
-          });
+          const res = await fetch(
+            "https://blow-mlservice.onrender.com/classify",
+            {
+              method: "POST",
+              body: formData,
+            }
+          );
 
           const json = await res.json();
           const prediction = json?.prediction || "";
@@ -196,7 +199,9 @@ export default function ViewDedication({ id: propId }) {
         }}
       >
         <button
-          onClick={experienceEnded ? () => setExperienceEnded(false) : detectBlow}
+          onClick={
+            experienceEnded ? () => setExperienceEnded(false) : detectBlow
+          }
           disabled={isDetecting}
           style={{
             backgroundColor: isDetecting ? "#777" : "#ff3366",
