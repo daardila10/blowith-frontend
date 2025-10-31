@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 
 export default function ViewDedication({ id: propId }) {
   const [data, setData] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDetecting, setIsDetecting] = useState(false);
   const [approved, setApproved] = useState(false);
+  const preloadRef = useRef(null); // preloader for next video
 
   useEffect(() => {
     const id =
@@ -26,6 +27,17 @@ export default function ViewDedication({ id: propId }) {
 
     fetchVideo();
   }, [propId]);
+
+  // When currentIndex changes → preload next video
+  useEffect(() => {
+    if (!data?.videoLinks?.length) return;
+    const nextIndex = (currentIndex + 1) % data.videoLinks.length;
+    const nextVideo = data.videoLinks[nextIndex];
+    if (preloadRef.current && nextVideo) {
+      preloadRef.current.src = nextVideo;
+      preloadRef.current.load();
+    }
+  }, [currentIndex, data]);
 
   const handleNext = () => {
     setCurrentIndex((i) => (i + 1) % (data?.videoLinks?.length || 1));
@@ -117,18 +129,18 @@ export default function ViewDedication({ id: propId }) {
   const currentVideo = videoLinks[currentIndex];
 
   return (
-    <div style={{ textAlign: "center", padding: "20px" }}>
-      <h2>🎁 Dedication</h2>
-      <p>
-        <strong>From:</strong> {data.senderName}
-      </p>
-      <p>
-        <strong>To:</strong> {data.receiverName}
-      </p>
-      <p>
-        <strong>Message:</strong> {data.message}
-      </p>
-
+    <div
+      style={{
+        textAlign: "center",
+        padding: "20px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "space-between",
+        minHeight: "100vh",
+      }}
+    >
+      {/* === VIDEO === */}
       {currentVideo ? (
         <video
           key={currentVideo}
@@ -137,38 +149,66 @@ export default function ViewDedication({ id: propId }) {
           autoPlay
           playsInline
           style={{
-            width: "90%",
-            maxWidth: "600px",
-            borderRadius: "12px",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+            width: "95%",
+            maxWidth: "900px",
+            borderRadius: "16px",
+            boxShadow: "0 6px 24px rgba(0,0,0,0.25)",
+            marginBottom: "20px",
+            transition: "opacity 0.6s ease-in-out",
           }}
         />
       ) : (
         <div>No video available</div>
       )}
 
-      {videoLinks.length > 1 && (
-        <div style={{ marginTop: "20px" }}>
-          <button
-            onClick={detectBlow}
-            disabled={isDetecting}
-            style={{
-              backgroundColor: isDetecting ? "#ccc" : "#4CAF50",
-              color: "white",
-              border: "none",
-              padding: "10px 16px",
-              borderRadius: "8px",
-              cursor: isDetecting ? "not-allowed" : "pointer",
-            }}
-          >
-            {isDetecting
-              ? "Listening..."
-              : approved
-              ? "✅ Detected"
-              : "🎤 Blow to continue"}
-          </button>
-        </div>
-      )}
+      {/* Hidden preloader */}
+      <video ref={preloadRef} preload="auto" style={{ display: "none" }} />
+
+      {/* === MESSAGE === */}
+      <div style={{ width: "100%", maxWidth: "800px" }}>
+        <h2>🎁 Dedication</h2>
+        <p>
+          <strong>From:</strong> {data.senderName}
+        </p>
+        <p>
+          <strong>To:</strong> {data.receiverName}
+        </p>
+        <p
+          style={{
+            background: "#f9f9f9",
+            padding: "12px",
+            borderRadius: "8px",
+            marginTop: "8px",
+            fontSize: "1.1em",
+          }}
+        >
+          {data.message}
+        </p>
+
+        {videoLinks.length > 1 && (
+          <div style={{ marginTop: "20px" }}>
+            <button
+              onClick={detectBlow}
+              disabled={isDetecting}
+              style={{
+                backgroundColor: isDetecting ? "#bbb" : "#007bff",
+                color: "white",
+                border: "none",
+                padding: "12px 20px",
+                borderRadius: "10px",
+                cursor: isDetecting ? "not-allowed" : "pointer",
+                fontSize: "1.1em",
+              }}
+            >
+              {isDetecting
+                ? "🎤 Listening..."
+                : approved
+                ? "✅ Blow detected"
+                : "🌬️  continue"}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
